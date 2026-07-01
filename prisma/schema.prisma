@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String?
+  avatar      String?
+  createdAt   DateTime     @default(now())
+  scores      GameScore[]
+  leaderboard Leaderboard[]
+  streak      Streak?
+  cosmetics   Cosmetic[]
+}
+
+model GameScore {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  gameId    String
+  score     Int
+  turno     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([userId, gameId])
+}
+
+model Leaderboard {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  weekNumber  Int
+  totalScore  Int      @default(0)
+  rank        Int?
+
+  @@unique([userId, weekNumber])
+}
+
+model Streak {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  currentStreak  Int      @default(0)
+  lastPlayDate   DateTime?
+}
+
+model Cosmetic {
+  id         String @id @default(cuid())
+  userId     String
+  user       User   @relation(fields: [userId], references: [id])
+  cosmeticId String
+  owned      Boolean @default(true)
+
+  @@unique([userId, cosmeticId])
+}
+
+model JeopardyQuestion {
+  id         String   @id @default(cuid())
+  question   String   @db.Text
+  answer     String
+  category   String
+  difficulty String
+  source     String   @default("custom")
+  createdAt  DateTime @default(now())
+}

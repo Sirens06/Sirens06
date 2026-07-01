@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-purple: #8b5cf6;
+  --brand-black: #0a0a0a;
+}
+
+body {
+  background-color: var(--brand-black);
+  color: white;
+}
