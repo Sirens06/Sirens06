@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import { useSubmitScore } from '@/hooks/useSubmitScore';
 
 interface Track {
   id: string;
@@ -21,6 +22,7 @@ export default function GuessTheArtist() {
   const [score, setScore] = useState(0);
   const [timer, setTimer] = useState(30);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const submitScore = useSubmitScore('guess-artist');
 
   useEffect(() => {
     fetchTrack();
@@ -56,7 +58,9 @@ export default function GuessTheArtist() {
     setIsCorrect(correct ?? false);
 
     if (correct) {
-      setScore((s) => s + 100 + Math.floor(timer * 2) - (showImage ? 25 : 0));
+      const roundScore = 100 + Math.floor(timer * 2) - (showImage ? 25 : 0);
+      setScore((s) => s + roundScore);
+      submitScore(roundScore);
     }
   };
 

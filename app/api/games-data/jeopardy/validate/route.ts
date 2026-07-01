@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { jeopardyService } from '@/lib/services/jeopardy-service';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -14,11 +13,7 @@ export async function POST(request: Request) {
   try {
     const body = validateSchema.parse(await request.json());
 
-    const response = await axios.get('https://jservice.io/api/clues', {
-      params: { id: body.questionId },
-    });
-    const question = response.data[0];
-
+    const question = await jeopardyService.getQuestionById(body.questionId);
     if (!question) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 });
     }

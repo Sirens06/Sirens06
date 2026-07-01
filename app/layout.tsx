@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { DonationButton } from '@/components/layout/DonationButton';
+import { Navbar } from '@/components/layout/Navbar';
 
 export const metadata: Metadata = {
   title: 'Multi-Game Platform',
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body>
+        <Navbar />
         {children}
         <DonationButton />
       </body>
