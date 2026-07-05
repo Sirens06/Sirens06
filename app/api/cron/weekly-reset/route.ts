@@ -11,6 +11,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const archived = resetWeeklyLeaderboard();
-  return NextResponse.json({ archivedEntries: archived.length });
+  const rankedCount = await resetWeeklyLeaderboard();
+  return NextResponse.json({ rankedCount });
 }

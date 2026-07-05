@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { format, isYesterday, parseISO } from 'date-fns';
-import { getGuestId } from '@/lib/session';
+import { isSameDay, isYesterday } from 'date-fns';
+import { getCurrentUserId } from '@/lib/session';
 import { store } from '@/lib/store';
 import { getStreakMultiplier } from '@/lib/constants';
 
@@ -13,34 +13,35 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request, { params }: { params: { gameId: string } }) {
-  const userId = getGuestId();
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const body = bodySchema.parse(await request.json());
 
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const streak = store.getStreak(userId);
+  const now = new Date();
+  const streak = await store.getStreak(userId);
 
   let nextStreakCount = 1;
-  if (streak.lastPlayDate === today) {
+  if (streak.lastPlayDate && isSameDay(streak.lastPlayDate, now)) {
     nextStreakCount = streak.currentStreak;
-  } else if (streak.lastPlayDate && isYesterday(parseISO(streak.lastPlayDate))) {
+  } else if (streak.lastPlayDate && isYesterday(streak.lastPlayDate)) {
     nextStreakCount = streak.currentStreak + 1;
   }
-  store.setStreak(userId, { currentStreak: nextStreakCount, lastPlayDate: today });
+  await store.setStreak(userId, { currentStreak: nextStreakCount, lastPlayDate: now });
 
   const multiplier = getStreakMultiplier(nextStreakCount);
   const finalScore = Math.round(body.score * multiplier);
 
-  store.addScore({
+  await store.addScore({
     userId,
     gameId: params.gameId,
     score: finalScore,
     turno: body.turno,
-    createdAt: new Date(),
   });
 
-  const totalScore = store
-    .getScoresForUser(userId)
-    .reduce((sum, s) => sum + s.score, 0);
+  const scores = await store.getScoresForUser(userId);
+  const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
 
   return NextResponse.json({
     baseScore: body.score,

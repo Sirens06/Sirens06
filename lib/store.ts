@@ -1,71 +1,64 @@
-/**
- * In-memory data store for scores/streaks/cosmetics. This is a V1 stand-in
- * for the Prisma-backed persistence described in prisma/schema.prisma —
- * swap these functions for real DB queries once DATABASE_URL is wired up.
- * State is per-process, so it resets on server restart and isn't shared
- * across serverless instances; fine for local dev, not for production.
- */
-
-export interface ScoreEntry {
-  userId: string;
-  gameId: string;
-  score: number;
-  turno: number;
-  createdAt: Date;
-}
+import { prisma } from '@/lib/db';
 
 export interface StreakEntry {
   currentStreak: number;
-  lastPlayDate: string | null; // yyyy-MM-dd
+  lastPlayDate: Date | null;
 }
 
-const scores: ScoreEntry[] = [];
-const streaks = new Map<string, StreakEntry>();
-const ownedCosmetics = new Map<string, Set<string>>();
-const cosmeticSpend = new Map<string, number>();
-
 export const store = {
-  addScore(entry: ScoreEntry) {
-    scores.push(entry);
+  async addScore(entry: { userId: string; gameId: string; score: number; turno: number }) {
+    return prisma.gameScore.create({ data: entry });
   },
 
-  getScoresForUser(userId: string) {
-    return scores.filter((s) => s.userId === userId);
+  async getScoresForUser(userId: string) {
+    return prisma.gameScore.findMany({ where: { userId } });
   },
 
-  getAllScores() {
-    return scores;
+  async getScoresSince(date: Date) {
+    return prisma.gameScore.findMany({ where: { createdAt: { gte: date } } });
   },
 
-  archiveAndResetScores() {
-    const archived = [...scores];
-    scores.length = 0;
-    return archived;
+  async getAllScores() {
+    return prisma.gameScore.findMany();
   },
 
-  getStreak(userId: string): StreakEntry {
-    return streaks.get(userId) ?? { currentStreak: 0, lastPlayDate: null };
+  async getStreak(userId: string): Promise<StreakEntry> {
+    const streak = await prisma.streak.findUnique({ where: { userId } });
+    return streak
+      ? { currentStreak: streak.currentStreak, lastPlayDate: streak.lastPlayDate }
+      : { currentStreak: 0, lastPlayDate: null };
   },
 
-  setStreak(userId: string, entry: StreakEntry) {
-    streaks.set(userId, entry);
+  async setStreak(userId: string, entry: StreakEntry) {
+    return prisma.streak.upsert({
+      where: { userId },
+      update: { currentStreak: entry.currentStreak, lastPlayDate: entry.lastPlayDate },
+      create: { userId, currentStreak: entry.currentStreak, lastPlayDate: entry.lastPlayDate },
+    });
   },
 
-  getOwnedCosmetics(userId: string): Set<string> {
-    return ownedCosmetics.get(userId) ?? new Set();
+  async getOwnedCosmetics(userId: string): Promise<Set<string>> {
+    const rows = await prisma.cosmetic.findMany({ where: { userId, owned: true } });
+    return new Set(rows.map((r) => r.cosmeticId));
   },
 
-  addOwnedCosmetic(userId: string, cosmeticId: string) {
-    const set = ownedCosmetics.get(userId) ?? new Set<string>();
-    set.add(cosmeticId);
-    ownedCosmetics.set(userId, set);
+  async addOwnedCosmetic(userId: string, cosmeticId: string) {
+    return prisma.cosmetic.upsert({
+      where: { userId_cosmeticId: { userId, cosmeticId } },
+      update: { owned: true },
+      create: { userId, cosmeticId, owned: true },
+    });
   },
 
-  getCosmeticSpend(userId: string) {
-    return cosmeticSpend.get(userId) ?? 0;
+  async getCosmeticSpend(userId: string): Promise<number> {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    return user?.cosmeticSpend ?? 0;
   },
 
-  addCosmeticSpend(userId: string, amount: number) {
-    cosmeticSpend.set(userId, this.getCosmeticSpend(userId) + amount);
+  async addCosmeticSpend(userId: string, amount: number) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { cosmeticSpend: { increment: amount } },
+    });
   },
 };

@@ -8,15 +8,17 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  name        String?
-  avatar      String?
-  createdAt   DateTime     @default(now())
-  scores      GameScore[]
-  leaderboard Leaderboard[]
-  streak      Streak?
-  cosmetics   Cosmetic[]
+  id            String        @id @default(cuid())
+  email         String        @unique
+  passwordHash  String?
+  name          String?
+  avatar        String?
+  cosmeticSpend Int           @default(0)
+  createdAt     DateTime      @default(now())
+  scores        GameScore[]
+  leaderboard   Leaderboard[]
+  streak        Streak?
+  cosmetics     Cosmetic[]
 }
 
 model GameScore {
